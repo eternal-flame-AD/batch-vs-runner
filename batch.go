@@ -63,7 +63,7 @@ func GenerateJobWorkspaceFromFileList(list []string, workspaceDef *CompiledWorks
 
 	makeBatch := func() {
 		currentBatchDefinition.CumulativeEndIdx = molCounter
-		if molCounter > flagBatchEnd {
+		if flagBatchEnd > 0 && molCounter > flagBatchEnd {
 			currentBatchDefinition.CumulativeEndIdx = flagBatchEnd
 		}
 
