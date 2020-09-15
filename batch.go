@@ -71,7 +71,7 @@ func GenerateJobWorkspaceFromFileList(list []string, workspaceDef *CompiledWorks
 			return
 		}
 
-		currentBatchDefinition.WorkSpaceDir = fmt.Sprintf("job_%d_%d", currentBatchDefinition.CumulativeStartIdx, currentBatchDefinition.CumulativeEndIdx)
+		currentBatchDefinition.WorkSpaceDir = fmt.Sprintf("%s_%d_%d", flagJobDirPrefix, currentBatchDefinition.CumulativeStartIdx, currentBatchDefinition.CumulativeEndIdx)
 		panicIfErr(os.MkdirAll(currentBatchDefinition.WorkSpaceDir, 0755))
 
 		panicIfErr(

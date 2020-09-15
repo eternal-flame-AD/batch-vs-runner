@@ -23,6 +23,7 @@ var (
 	flagWorkSpaceExec    string
 	flagWorkerStartDelay int
 	flagVerbose          bool
+	flagJobDirPrefix     string
 
 	molFileList []string
 	molFileExt  string
@@ -34,7 +35,7 @@ func init() {
 	// parse args and stuff
 
 	flag.Usage = func() {
-		fmt.Fprintf(os.Stderr, "Usage of %s: batch-vs-runner [FLAGS] [SD|MOL2|PDB|DIRECTORY]...\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "Usage of %s: batch-vs-runner [FLAGS] [SD|PDB|DIRECTORY]...\n", os.Args[0])
 		flag.PrintDefaults()
 	}
 	flag.IntVar(&flagNProcess, "np", 1, "no. of worker processes")
@@ -47,6 +48,7 @@ func init() {
 	flag.IntVar(&flagBatchSize, "batchSize", 100, "batch size")
 	flag.BoolVar(&flagVerbose, "verbose", false, "pass through worker script output to terminal")
 	flag.BoolVar(&flagWorkSpaceOnly, "workspaceOnly", false, "generate workspace only but do not execute any job, you can use anything to execute the job once the workspace has been compiled")
+	flag.StringVar(&flagJobDirPrefix, "prefix", "job", "prefix on individual job work directory")
 
 	lineBreakFlag := ""
 	flag.StringVar(&lineBreakFlag, "lineBreak", "unix", "linebreak for output structure: unix, dos, or mac")
@@ -78,7 +80,7 @@ func init() {
 				log.Panicf("cannot STAT mol file '%s': %v", path, err)
 			}
 			switch ext := strings.ToLower(filepath.Ext(path)); ext {
-			case ".sdf", ".mol", ".mol2":
+			case ".sdf", ".sd", ".pdb":
 				if molFileExt == "" {
 					molFileExt = ext
 				} else if molFileExt != ext {

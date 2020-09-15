@@ -1,0 +1,67 @@
+<ROSETTASCRIPTS>
+    <SCOREFXNS>
+
+        <ScoreFunction name="lig_hard_rep" weights="ligand" />
+        <ScoreFunction name="lig_soft_rep" weights="ligand_soft_rep" />
+
+    </SCOREFXNS>
+
+        Definition of ligands
+    <LIGAND_AREAS>
+        <LigandArea name="log_dock_sc" chain="X" cutoff="6" add_nbr_radius="true" all_atom_mode="true" />
+        <LigandArea name="log_final_sc" chain="X" cutoff="6" add_nbr_radius="true" all_atom_mode="true" />
+        <LigandArea name="log_final_bb" chain="X" cutoff="7" add_nbr_radius="false" all_atom_mode="true" Calpha_restraints="0.3" />
+    </LIGAND_AREAS>
+        Definition of protein-ligand interface
+    <INTERFACE_BUILDERS>
+        <InterfaceBuilder name="log_iface_dock_sc" ligand_areas="log_dock_sc" />
+        <InterfaceBuilder name="log_iface_final_sc" ligand_areas="log_final_sc" />
+        <InterfaceBuilder name="log_iface_final_bb" ligand_areas="log_final_bb" extension_window="3" />
+    </INTERFACE_BUILDERS>
+        Define which residues are movable
+    <MOVEMAP_BUILDERS>
+        <MoveMapBuilder name="mm_dock_sc" sc_interface="log_iface_dock_sc" minimize_water="false" />
+        <MoveMapBuilder name="mm_final" sc_interface="log_iface_final_sc" bb_interface="log_iface_final_bb" minimize_water="true" />
+    </MOVEMAP_BUILDERS>
+    <SCORINGGRIDS ligand_chain="X" width="25" name="transform_grid">
+        <ClassicGrid grid_name="classic" weight="1" />
+    </SCORINGGRIDS>
+
+    <TASKOPERATIONS>
+    </TASKOPERATIONS>
+    <MOVE_MAP_FACTORIES>
+    </MOVE_MAP_FACTORIES>
+    <SIMPLE_METRICS>
+    </SIMPLE_METRICS>
+    <FILTERS>
+    </FILTERS>
+    <MOVERS>
+        <StartFrom name="start_from" chain="X">
+            <PDB filename="ligand_aligned.pdb" />
+        </StartFrom>
+        <Transform name="transform" chain="X" box_size="10" move_distance="0.1" angle="20" cycles="1000" repeats="20" temperature="5.0"  grid_set="transform_grid"/>
+        <HighResDocker name="high_res_docker" cycles="6" repack_every_Nth="3" scorefxn="lig_soft_rep" movemap_builder="mm_dock_sc" />
+        <FinalMinimizer name="final" scorefxn="lig_hard_rep" movemap_builder="mm_final" />
+
+        Dump PDB for debug purposes
+        <DumpPdb name="dump" fname="pose.pdb" scorefxn="lig_hard_rep" /> 
+        
+        Dont necessarily need native, but probably gonna need for RMSD calc
+        <InterfaceScoreCalculator name="iface_score" chains="A" scorefxn="lig_hard_rep" />
+
+        <ParsedProtocol name="low_res_dock">
+            <Add mover_name="start_from" />
+            <Add mover_name="transform" />
+        </ParsedProtocol>
+        <ParsedProtocol name="high_res_dock">
+            <Add mover_name="high_res_docker" />
+            <Add mover_name="final" />
+        </ParsedProtocol>
+    </MOVERS>
+    <PROTOCOLS>
+        <Add mover_name="low_res_dock" />
+        <Add mover_name="high_res_dock" />
+        <Add mover_name="iface_score" />
+    </PROTOCOLS>
+    <OUTPUT />
+</ROSETTASCRIPTS>

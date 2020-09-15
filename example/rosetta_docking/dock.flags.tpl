@@ -1,0 +1,7 @@
+-out:prefix dock_{{ .CumulativeStartIdx }}_{{ .CumulativeEndIdx }}
+-parser:protocol dock.xml
+-in:file:list poses.txt
+-run:constant_seed
+-in:file:extra_res_path .
+-in:path:database_cache_dir .cache
+-qsar:grid_dir ../.grid_cache
