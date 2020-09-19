@@ -79,8 +79,8 @@ func init() {
 			if err != nil {
 				log.Panicf("cannot STAT mol file '%s': %v", path, err)
 			}
-			switch ext := strings.ToLower(filepath.Ext(path)); ext {
-			case ".sdf", ".sd", ".pdb":
+			switch ext := strings.ToLower(filepath.Ext(strings.TrimSuffix(path, ".gz"))); ext {
+			case ".sdf", ".sd", ".pdb", ".mol2":
 				if molFileExt == "" {
 					molFileExt = ext
 				} else if molFileExt != ext {
@@ -88,7 +88,7 @@ func init() {
 				}
 				molFileList = append(molFileList, path)
 			default:
-				log.Printf("file '%s' is not of extention sdf, mol, mol2 or pdb, ignoring...", path)
+				log.Printf("file '%s' is not of extention sdf, sd, mol2 or pdb, ignoring...", path)
 			}
 		}
 		if providedFS.IsDir() {

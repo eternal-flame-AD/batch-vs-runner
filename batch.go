@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"compress/gzip"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -124,8 +125,6 @@ func GenerateJobWorkspaceFromFileList(list []string, workspaceDef *CompiledWorks
 
 		currentBatchDefinition.Molecules = append(currentBatchDefinition.Molecules, r)
 		currentBatch.WriteString(s)
-		currentBatch.WriteString("$$$$")
-		currentBatch.WriteString(lineBreak)
 		if molCounter-currentBatchDefinition.CumulativeStartIdx+1 == flagBatchSize {
 			makeBatch()
 			currentBatchDefinition.CumulativeStartIdx = molCounter + 1
@@ -135,35 +134,70 @@ func GenerateJobWorkspaceFromFileList(list []string, workspaceDef *CompiledWorks
 	for _, f := range list {
 		fHandle, err := os.Open(f)
 		panicIfErr(err)
-		reader := bufio.NewScanner(fHandle)
+
+		var reader *bufio.Scanner
+		// try find gzip header
+
+		var gzReader *gzip.Reader
+		gzipMagic := []byte("\x1f\x8b")
+		gzipBuf := make([]byte, len(gzipMagic))
+		if _, err := io.ReadFull(fHandle, gzipBuf); err != nil {
+			panicIfErr(err)
+		}
+		if string(gzipBuf) == string(gzipMagic) {
+			fHandle.Seek(0, io.SeekStart)
+			gzReader, err = gzip.NewReader(fHandle)
+			panicIfErr(err)
+			reader = bufio.NewScanner(gzReader)
+		} else {
+			reader = bufio.NewScanner(fHandle)
+		}
 
 		currentStructure := bytes.NewBufferString("")
 		startLineIdx := int64(1)
 		currentLineIdx := int64(0)
+
 		for reader.Scan() {
 			currentLineIdx++
 			line := reader.Text()
 			line = strings.TrimSuffix(line, "\n")
 			line = strings.TrimSuffix(line, "\r")
-			if line == "$$$$" {
+			if line == "$$$$" || line == "@<TRIPOS>MOLECULE" {
 
-				appendStructure(currentStructure.String(), MolRange{
-					FileName:  f,
-					StartLine: startLineIdx,
-					EndLine:   currentLineIdx,
-				})
-				if molCounter == flagBatchEnd {
-					break
+				if currentStructure.Len() > 16 { // greater than 16 bytes is considered a full molecule
+
+					molString := currentStructure.String()
+					if !strings.HasPrefix(molString, line) {
+						if line == "$$$$" {
+							molString += line + lineBreak
+						} else {
+							molString = line + lineBreak + molString
+						}
+					}
+
+					appendStructure(molString, MolRange{
+						FileName:  f,
+						StartLine: startLineIdx,
+						EndLine:   currentLineIdx,
+					})
+					if molCounter == flagBatchEnd {
+						break
+					}
+
+					startLineIdx = currentLineIdx + 1
+					currentStructure = bytes.NewBufferString("")
+				} else {
+					currentStructure.WriteString(line)
+					currentStructure.WriteString(lineBreak)
 				}
 
-				startLineIdx = currentLineIdx + 1
-				currentStructure = bytes.NewBufferString("")
 			} else {
 				currentStructure.WriteString(line)
 				currentStructure.WriteString(lineBreak)
 			}
 		}
-		if currentStructure.Len() > 8 {
+
+		if currentStructure.Len() > 16 {
 			currentStructure.WriteString(lineBreak)
 
 			appendStructure(currentStructure.String(), MolRange{
@@ -176,6 +210,9 @@ func GenerateJobWorkspaceFromFileList(list []string, workspaceDef *CompiledWorks
 			}
 		}
 		fHandle.Close()
+		if gzReader != nil {
+			gzReader.Close()
+		}
 	}
 
 	if molCounter-currentBatchDefinition.CumulativeStartIdx+1 > 0 {
