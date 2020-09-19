@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"io/ioutil"
@@ -120,10 +121,12 @@ func main() {
 	if !flagWorkSpaceOnly {
 		log.Println("workspace compiled successfully! spawning workers")
 
+		runCtx, runCtxCancel := context.WithCancel(context.Background())
 		wp := workerpool.NewPool(flagNProcess)
 		for _, batch := range batches {
-			wp.SubmitTask(BatchExecution(batch))
+			wp.SubmitTask(BatchExecution(runCtx, batch))
 		}
+		defer runCtxCancel()
 
 		wp.Start(time.Millisecond * time.Duration(flagWorkerStartDelay))
 		wp.Wait()

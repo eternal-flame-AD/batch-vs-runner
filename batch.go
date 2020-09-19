@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"compress/gzip"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -28,9 +29,9 @@ type MolRange struct {
 	EndLine   int64
 }
 
-func BatchExecution(batch BatchDefinition) func() {
+func BatchExecution(ctx context.Context, batch BatchDefinition) func() {
 	return func() {
-		cmd := exec.Command("/bin/bash", "-c", flagWorkSpaceExec)
+		cmd := exec.CommandContext(ctx, "/bin/bash", "-c", flagWorkSpaceExec)
 		cmd.Dir = batch.WorkSpaceDir
 
 		if flagVerbose {
