@@ -7,8 +7,6 @@ import (
 	"path/filepath"
 	"strings"
 	"text/template"
-
-	"github.com/eternal-flame-AD/batch-vs-runner/tplparser"
 )
 
 type CompiledWorkspace struct {
@@ -42,7 +40,7 @@ func compileWorkspaceTemplate(path string) *CompiledWorkspace {
 		if filepath.Ext(fp) == ".tpl" {
 			data, err := ioutil.ReadFile(fp)
 			panicIfErr(err)
-			tpl, err := tplparser.ParseTpl(string(data))
+			tpl, err := ParseTpl(string(data))
 			panicIfErr(err)
 			res.TemplateFiles[relPath] = tpl
 		} else {

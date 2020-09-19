@@ -1,4 +1,4 @@
-package tplparser
+package main
 
 import (
 	"fmt"

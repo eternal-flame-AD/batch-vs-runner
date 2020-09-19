@@ -10,8 +10,6 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
-
-	"github.com/eternal-flame-AD/batch-vs-runner/workerpool"
 )
 
 var (
@@ -122,7 +120,7 @@ func main() {
 		log.Println("workspace compiled successfully! spawning workers")
 
 		runCtx, runCtxCancel := context.WithCancel(context.Background())
-		wp := workerpool.NewPool(flagNProcess)
+		wp := NewPool(flagNProcess)
 		for _, batch := range batches {
 			wp.SubmitTask(BatchExecution(runCtx, batch))
 		}

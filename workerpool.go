@@ -1,4 +1,4 @@
-package workerpool
+package main
 
 import (
 	"log"
