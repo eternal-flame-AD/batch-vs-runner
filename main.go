@@ -34,7 +34,7 @@ func init() {
 	// parse args and stuff
 
 	flag.Usage = func() {
-		fmt.Fprintf(os.Stderr, "Usage of %s: batch-vs-runner [FLAGS] [SD|PDB|DIRECTORY]...\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "Usage of %s: batch-vs-runner [FLAGS] [SD|PDB|MOL2|DIRECTORY]...\n", os.Args[0])
 		flag.PrintDefaults()
 	}
 	flag.IntVar(&flagNProcess, "np", 1, "no. of worker processes")
