@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 	"text/template"
 
 	"github.com/eternal-flame-AD/batch-vs-runner/tplparser"
@@ -33,7 +34,11 @@ func compileWorkspaceTemplate(path string) *CompiledWorkspace {
 		panicIfErr(err)
 		stat, err := os.Stat(fp)
 		panicIfErr(err)
-		res.PermLookupTable[relPath] = stat.Mode()
+		fileMode := stat.Mode()
+		if ext := filepath.Ext(fp); strings.Contains(".sh.bash.zsh.csh.run.exec.exe", ext) {
+			fileMode |= 0111
+		}
+		res.PermLookupTable[relPath] = fileMode
 		if filepath.Ext(fp) == ".tpl" {
 			data, err := ioutil.ReadFile(fp)
 			panicIfErr(err)

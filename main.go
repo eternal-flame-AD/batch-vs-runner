@@ -67,6 +67,9 @@ func init() {
 		log.Println("WARN: executable path does not start with ., only searching in PATH")
 	}
 
+}
+
+func main() {
 	molfileArgs := flag.Args()
 	for _, fn := range molfileArgs {
 		providedFS, err := os.Stat(fn)
@@ -107,9 +110,7 @@ func init() {
 		panic("must specify at lest 1 molecule file")
 	}
 	log.Printf("%d mol files located successfully", len(molFileList))
-}
 
-func main() {
 	log.Println("compiling workspace template")
 	workSpace := compileWorkspaceTemplate(flagTemplatePath)
 
