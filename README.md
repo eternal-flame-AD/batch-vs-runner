@@ -5,7 +5,7 @@
 CLI tool for running virtual screening (or other batch processing on chemical structures) on multiple processors by creating batches and running them in parallel.
 
 ```
-Usage of batch-vs-runner: batch-vs-runner [FLAGS] [SD|PDB|MOL2|DIRECTORY]...
+Usage of batch-vs-runner: batch-vs-runner [FLAGS] [SD|PDB|PDBQT|MOL2|DIRECTORY]...
   -batchEnd int
         end at Nth molecule, 0 means all molecules
   -batchSize int
@@ -51,7 +51,7 @@ Full examples:
 ### Template folder
 - Files will preserve their path relative to the template folder when they are compiled, so `workspace/some_dir/file.txt` will be copied to `job_*_*/some_dir/file.txt` upon execution. File modes will also be copied, exception is common executable files such as `.sh` `.bash` `.run` will be automatically added executable permission when they are compiled to the workspace.
 - Files with `.tpl` extension will be processed through [Go text/template system](https://pkg.go.dev/text/template), and they will be executed with `.` Context filled with the batch definition for each batch job. See `example/gold/example.txt.tpl` as an example.
-- A `job.<ext>` file will automatically be generated containing the molecules belonging to the batch. `<ext>` is `mol2` `sd` `sdf` `pdb` depending on input molecule format.
+- A `job.<ext>` file will automatically be generated containing the molecules belonging to the batch. `<ext>` is `mol2` `sd` `sdf` `pdb` `pdbqt` depending on input molecule format.
 - I recommend not leave empty folders in template directory. If you want to explicitly create an empty folder, use `mkdir` in `job.sh` or `touch .keep > template/empty_dir`
 
 ### `job.sh` file

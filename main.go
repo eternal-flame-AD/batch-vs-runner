@@ -34,7 +34,7 @@ func init() {
 	// parse args and stuff
 
 	flag.Usage = func() {
-		fmt.Fprintf(os.Stderr, "Usage of %s: batch-vs-runner [FLAGS] [SD|PDB|MOL2|DIRECTORY]...\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "Usage of %s: batch-vs-runner [FLAGS] [SD|PDB|PDBQT|MOL2|DIRECTORY]...\n", os.Args[0])
 		flag.PrintDefaults()
 	}
 	flag.IntVar(&flagNProcess, "np", 1, "no. of worker processes")
@@ -82,7 +82,7 @@ func main() {
 				log.Panicf("cannot STAT mol file '%s': %v", path, err)
 			}
 			switch ext := strings.ToLower(filepath.Ext(strings.TrimSuffix(path, ".gz"))); ext {
-			case ".sdf", ".sd", ".pdb", ".mol2":
+			case ".sdf", ".sd", ".pdb", ".pdbqt", ".mol2":
 				if molFileExt == "" {
 					molFileExt = ext
 				} else if molFileExt != ext {
@@ -90,7 +90,7 @@ func main() {
 				}
 				molFileList = append(molFileList, path)
 			default:
-				log.Printf("file '%s' is not of extention sdf, sd, mol2 or pdb, ignoring...", path)
+				log.Printf("file '%s' is not of extention sdf, sd, mol2, pdb or pdbqt, ignoring...", path)
 			}
 		}
 		if providedFS.IsDir() {
