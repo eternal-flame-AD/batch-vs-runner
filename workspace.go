@@ -33,7 +33,7 @@ func compileWorkspaceTemplate(path string) *CompiledWorkspace {
 		stat, err := os.Stat(fp)
 		panicIfErr(err)
 		fileMode := stat.Mode()
-		if ext := filepath.Ext(fp); strings.Contains(".sh.bash.zsh.csh.run.exec.exe", ext) {
+		if ext := filepath.Ext(strings.TrimSuffix(fp, ".tpl")); strings.Contains(".sh.bash.zsh.csh.run.exec.exe", ext) {
 			fileMode |= 0111
 		}
 		res.PermLookupTable[relPath] = fileMode

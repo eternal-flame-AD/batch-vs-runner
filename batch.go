@@ -17,6 +17,7 @@ import (
 )
 
 type BatchDefinition struct {
+	ID                 int
 	WorkSpaceDir       string
 	CumulativeStartIdx int
 	CumulativeEndIdx   int
@@ -218,6 +219,10 @@ func GenerateJobWorkspaceFromFileList(list []string, workspaceDef *CompiledWorks
 
 	if molCounter-currentBatchDefinition.CumulativeStartIdx+1 > 0 {
 		makeBatch()
+	}
+
+	for i := range batchDefinitions {
+		batchDefinitions[i].ID = i
 	}
 
 	return batchDefinitions
