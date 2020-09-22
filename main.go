@@ -120,10 +120,19 @@ func main() {
 
 	log.Println("start generating job batch files")
 	batches := GenerateJobWorkspaceFromFileList(molFileList, workSpace)
+	log.Println("workspace compiled successfully!")
 
-	slurmAlloc := GetSlurmInfo()
 	if !flagWorkSpaceOnly {
-		log.Println("workspace compiled successfully!")
+
+		slurmAlloc := GetSlurmInfo()
+		if slurmAlloc != nil {
+			log.Printf("Active slurm allocation. UseSlurmMode=%v", flagUseSlurm)
+			log.Printf("%15s|%8s|", "HostName", "NTasks")
+			log.Printf("%15s|%8s|", "-----", "-----")
+			for _, node := range slurmAlloc.Nodes {
+				log.Printf("%15s|%8d|", node.HostName, node.NTasks)
+			}
+		}
 
 		runCtx, runCtxCancel := context.WithCancel(context.Background())
 		defer runCtxCancel()
@@ -166,6 +175,7 @@ func main() {
 				jobWaitGroup.Add(1)
 				time.Sleep(time.Millisecond * time.Duration(flagWorkerStartDelay))
 			}
+			close(jobChan) // finished server goroutines can exit once all jobs have been distributed
 
 			jobWaitGroup.Wait()
 		}
