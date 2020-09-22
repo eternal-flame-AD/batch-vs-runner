@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -23,6 +24,8 @@ var (
 	flagWorkerStartDelay int
 	flagVerbose          bool
 	flagJobDirPrefix     string
+	flagUseSlurm         bool
+	flagSlurmTaskPerNode string
 
 	molFileList []string
 	molFileExt  string
@@ -37,7 +40,7 @@ func init() {
 		fmt.Fprintf(os.Stderr, "Usage of %s: batch-vs-runner [FLAGS] [SD|PDB|PDBQT|MOL2|DIRECTORY]...\n", os.Args[0])
 		flag.PrintDefaults()
 	}
-	flag.IntVar(&flagNProcess, "np", 1, "no. of worker processes")
+	flag.IntVar(&flagNProcess, "np", 1, "no. of worker processes (does not apply if slurm mode is in use)")
 	flag.IntVar(&flagWorkerStartDelay, "delay", 0, "delay a certain amount of time (in ms) between spawning the next process, useful for programs that periodically do heavy IO")
 
 	flag.StringVar(&flagTemplatePath, "workspace", ".", "path to job setup files (can be a directory or single file)")
@@ -48,6 +51,9 @@ func init() {
 	flag.BoolVar(&flagVerbose, "verbose", false, "pass through worker script output to terminal")
 	flag.BoolVar(&flagWorkSpaceOnly, "workspaceOnly", false, "generate workspace only but do not execute any job, you can use anything to execute the job once the workspace has been compiled")
 	flag.StringVar(&flagJobDirPrefix, "prefix", "job", "prefix on individual job work directory")
+
+	flag.BoolVar(&flagUseSlurm, "enableSlurm", true, "detect slurm allocations based on environment variable and use srun to run jobs")
+	flag.StringVar(&flagSlurmTaskPerNode, "slurmNodeTaskOverride", os.Getenv("SLURM_TASKS_PER_NODE"), "override how many tasks to distribute to each node from the env received from slurm")
 
 	lineBreakFlag := ""
 	flag.StringVar(&lineBreakFlag, "lineBreak", "unix", "linebreak for output structure: unix, dos, or mac")
@@ -65,7 +71,6 @@ func init() {
 	if !strings.HasPrefix(flagWorkSpaceExec, ".") {
 		log.Println("WARN: executable path does not start with ., only searching in PATH")
 	}
-
 }
 
 func main() {
@@ -116,17 +121,53 @@ func main() {
 	log.Println("start generating job batch files")
 	batches := GenerateJobWorkspaceFromFileList(molFileList, workSpace)
 
+	slurmAlloc := GetSlurmInfo()
 	if !flagWorkSpaceOnly {
-		log.Println("workspace compiled successfully! spawning workers")
+		log.Println("workspace compiled successfully!")
 
 		runCtx, runCtxCancel := context.WithCancel(context.Background())
-		wp := NewPool(flagNProcess)
-		for _, batch := range batches {
-			wp.SubmitTask(BatchExecution(runCtx, batch))
-		}
 		defer runCtxCancel()
 
-		wp.Start(time.Millisecond * time.Duration(flagWorkerStartDelay))
-		wp.Wait()
+		if !flagUseSlurm || slurmAlloc == nil {
+
+			wp := NewPool(flagNProcess)
+			for _, batch := range batches {
+				wp.SubmitTask(BatchExecution(runCtx, batch, nil))
+			}
+
+			wp.Start(time.Millisecond * time.Duration(flagWorkerStartDelay))
+			wp.Wait()
+
+		} else {
+
+			if flagNProcess != 1 {
+				log.Println("WARN: -np flag is disregarded in slurm mode.")
+			}
+
+			jobChan := make(chan BatchDefinition)
+			jobWaitGroup := sync.WaitGroup{}
+
+			// start goroutines to serve individual task slots
+			for _, node := range slurmAlloc.Nodes {
+				for i := 0; i < node.NTasks; i++ {
+					nodeBatchProxyPrefix := []string{"srun", "-n", "1", "-w", node.HostName}
+					go func() {
+						for batch := range jobChan {
+							BatchExecution(runCtx, batch, nodeBatchProxyPrefix)
+							jobWaitGroup.Done()
+						}
+					}()
+				}
+			}
+
+			// distribute jobs
+			for _, batch := range batches {
+				jobChan <- batch
+				jobWaitGroup.Add(1)
+				time.Sleep(time.Millisecond * time.Duration(flagWorkerStartDelay))
+			}
+
+			jobWaitGroup.Wait()
+		}
 	}
 }

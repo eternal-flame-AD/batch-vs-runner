@@ -30,9 +30,14 @@ type MolRange struct {
 	EndLine   int64
 }
 
-func BatchExecution(ctx context.Context, batch BatchDefinition) func() {
+func BatchExecution(ctx context.Context, batch BatchDefinition, proxy []string) func() {
 	return func() {
-		cmd := exec.CommandContext(ctx, "/bin/bash", "-c", flagWorkSpaceExec)
+		var cmd *exec.Cmd
+		if len(proxy) == 0 {
+			cmd = exec.CommandContext(ctx, "/bin/bash", "-c", flagWorkSpaceExec)
+		} else {
+			cmd = exec.CommandContext(ctx, proxy[0], append(proxy[1:], "/bin/bash", "-c", flagWorkSpaceExec)...)
+		}
 		cmd.Dir = batch.WorkSpaceDir
 
 		if flagVerbose {
@@ -44,7 +49,7 @@ func BatchExecution(ctx context.Context, batch BatchDefinition) func() {
 		}
 
 		if err := cmd.Run(); err != nil {
-			log.Printf("an error while running in workspace %s: %v", batch.WorkSpaceDir, err)
+			log.Printf("an error while running in workspace %s: (%s) %v", batch.WorkSpaceDir, strings.Join(cmd.Args, " "), err)
 		}
 	}
 
