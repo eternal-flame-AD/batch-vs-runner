@@ -32,10 +32,9 @@ func GetSlurmInfo() *SlurmAllocation {
 	}
 
 	hostnameCmd := exec.Command("scontrol", "show", "hostnames", envNodeList)
-	hostnameCmd.Stderr = os.Stderr
 	hostNameBytesRead, err := hostnameCmd.CombinedOutput()
 	if err != nil {
-		log.Printf("cannot call scontrol: %v", err)
+		log.Printf("cannot call scontrol: %v (output is %s)", err, string(hostNameBytesRead))
 	}
 
 	hostNames := strings.Fields(string(hostNameBytesRead))
