@@ -156,8 +156,10 @@ func main() {
 			jobChan := make(chan BatchDefinition)
 			serverWaitGroup := sync.WaitGroup{}
 
+			nTasksTotal := 0
 			// start goroutines to serve individual task slots
 			for _, node := range slurmAlloc.Nodes {
+				nTasksTotal += node.NTasks
 				for i := 0; i < node.NTasks; i++ {
 					nodeBatchProxyPrefix := []string{"srun", "-n", "1", "-w", node.HostName}
 					serverWaitGroup.Add(1)
@@ -170,10 +172,14 @@ func main() {
 				}
 			}
 
+			startupCounter := nTasksTotal
 			// distribute jobs
 			for _, batch := range batches {
 				jobChan <- batch
-				time.Sleep(time.Millisecond * time.Duration(flagWorkerStartDelay))
+				if startupCounter > 0 {
+					time.Sleep(time.Millisecond * time.Duration(flagWorkerStartDelay))
+					startupCounter--
+				}
 			}
 			close(jobChan)
 
