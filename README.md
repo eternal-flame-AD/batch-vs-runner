@@ -14,14 +14,18 @@ Usage of batch-vs-runner: batch-vs-runner [FLAGS] [SD|PDB|PDBQT|MOL2|DIRECTORY].
         start from Nth molecule (cumulative across all input files) (default 1)
   -delay int
         delay a certain amount of time (in ms) between spawning the next process, useful for programs that periodically do heavy IO
+  -enableSlurm
+        detect slurm allocations based on environment variable and use srun to run jobs (default true)
   -exec string
         command to execute in worker (default "./job.sh")
   -lineBreak string
         linebreak for output structure: unix, dos, or mac (default "unix")
   -np int
-        no. of worker processes (default 1)
+        no. of worker processes (does not apply if slurm mode is in use) (default 1)
   -prefix string
         prefix on individual job work directory (default "job")
+  -slurmNodeTaskOverride string
+        override how many tasks to distribute to each node from the env received from slurm
   -verbose
         pass through worker script output to terminal
   -workspace string
@@ -54,6 +58,14 @@ Full examples:
 - A `job.<ext>` file will automatically be generated containing the molecules belonging to the batch. `<ext>` is `mol2` `sd` `sdf` `pdb` `pdbqt` depending on input molecule format.
 - I recommend not leave empty folders in template directory. If you want to explicitly create an empty folder, use `mkdir` in `job.sh` or `touch .keep > template/empty_dir`
 
+### HPC environment with slurm
+
+This program can automatically parse environment variables set by slurm and distribute jobs to the nodes allocated. (files won't be transferred automatically as of now, so must be run on a shared storage). No extra configuration needed.
+
+To exilicitly disable this behavior (a.k.a.) do not use `srun` and run all job shell files on master node, use `-enableSlurm=false`.
+
+Use flag `-slurmNodeTaskOverride` to override how many tasks to distribute to each node. Format is comma-separated list of numbers or numbers plus `(xN)` where N denotes the same configuration for `N` nodes.
+
 ### `job.sh` file
 
 The default command to execute for each batch job is `bash -c ./job.sh`. Thus, just add a script called `job.sh` in the template folder and it will be run automatically during runtime. Call your docking software in `job.sh` and ask it to dock file `job.sdf`, `job.mol2` etc. depending on your input molecule type.
@@ -63,4 +75,3 @@ NOTE: The work directory for each batch script is the batch folder, so if you ha
 ## Examples
 
 See `examples/` folder for some example workspace templates.
-
