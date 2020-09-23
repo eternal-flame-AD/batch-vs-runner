@@ -164,7 +164,7 @@ func main() {
 					go func() {
 						defer serverWaitGroup.Done()
 						for batch := range jobChan {
-							BatchExecution(runCtx, batch, nodeBatchProxyPrefix)
+							BatchExecution(runCtx, batch, nodeBatchProxyPrefix)()
 						}
 					}()
 				}
