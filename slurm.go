@@ -1,7 +1,6 @@
 package main
 
 import (
-	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
@@ -34,19 +33,9 @@ func GetSlurmInfo() *SlurmAllocation {
 
 	hostnameCmd := exec.Command("scontrol", "show", "hostnames", envNodeList)
 	hostnameCmd.Stderr = os.Stderr
-	hostNameReader, err := hostnameCmd.StdoutPipe()
+	hostNameBytesRead, err := hostnameCmd.CombinedOutput()
 	if err != nil {
-		log.Fatalf("Cannot create pipe to scontrol: %v", err)
-	}
-	if err := hostnameCmd.Run(); err != nil {
-		log.Fatalf("Cannot run scontrol: %v", err)
-	}
-	hostNameBytesRead, err := ioutil.ReadAll(hostNameReader)
-	if err != nil {
-		log.Fatalf("Cannot read from pipe to scontrol: %v", err)
-	}
-	if err := hostnameCmd.Wait(); err != nil {
-		log.Fatalf("Cannot run scontrol: %v", err)
+		log.Printf("cannot call scontrol: %v", err)
 	}
 
 	hostNames := strings.Fields(string(hostNameBytesRead))
