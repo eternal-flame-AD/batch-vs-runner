@@ -154,16 +154,17 @@ func main() {
 			}
 
 			jobChan := make(chan BatchDefinition)
-			jobWaitGroup := sync.WaitGroup{}
+			serverWaitGroup := sync.WaitGroup{}
 
 			// start goroutines to serve individual task slots
 			for _, node := range slurmAlloc.Nodes {
 				for i := 0; i < node.NTasks; i++ {
 					nodeBatchProxyPrefix := []string{"srun", "-n", "1", "-w", node.HostName}
+					serverWaitGroup.Add(1)
 					go func() {
+						defer serverWaitGroup.Done()
 						for batch := range jobChan {
 							BatchExecution(runCtx, batch, nodeBatchProxyPrefix)
-							jobWaitGroup.Done()
 						}
 					}()
 				}
@@ -172,12 +173,11 @@ func main() {
 			// distribute jobs
 			for _, batch := range batches {
 				jobChan <- batch
-				jobWaitGroup.Add(1)
 				time.Sleep(time.Millisecond * time.Duration(flagWorkerStartDelay))
 			}
-			close(jobChan) // finished server goroutines can exit once all jobs have been distributed
+			close(jobChan)
 
-			jobWaitGroup.Wait()
+			serverWaitGroup.Wait()
 		}
 	}
 }
