@@ -49,6 +49,7 @@ func GetSlurmInfo() *SlurmAllocation {
 	curNodeIdx := 0
 	for _, nodeNTasks := range strings.Split(flagSlurmTaskPerNode, ",") {
 		if grp := NodeNTasksComplexRegexp.FindStringSubmatch(nodeNTasks); len(grp) == 3 {
+
 			nTasksStr, multipleCntStr := grp[1], grp[2]
 			nTasks, _ := strconv.Atoi(nTasksStr)
 			multipleCnt, _ := strconv.Atoi(multipleCntStr)
@@ -57,7 +58,7 @@ func GetSlurmInfo() *SlurmAllocation {
 				curNodeIdx++
 			}
 
-		} else if nTasks, err := strconv.Atoi(nodeNTasks); err != nil {
+		} else if nTasks, err := strconv.Atoi(nodeNTasks); err == nil {
 			alloc.Nodes[curNodeIdx].NTasks = nTasks
 			curNodeIdx++
 		} else {
