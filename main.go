@@ -74,6 +74,18 @@ func init() {
 }
 
 func main() {
+
+	batches := prepareBatches()
+	log.Printf("%d batches in total", len(batches))
+
+	if !flagWorkSpaceOnly {
+		runBatches(batches)
+		os.Exit(int(HadErrorFlag))
+	}
+
+}
+
+func prepareBatches() []BatchDefinition {
 	molfileArgs := flag.Args()
 	for _, fn := range molfileArgs {
 		providedFS, err := os.Stat(fn)
@@ -122,68 +134,71 @@ func main() {
 	batches := GenerateJobWorkspaceFromFileList(molFileList, workSpace)
 	log.Println("workspace compiled successfully!")
 
-	if !flagWorkSpaceOnly {
+	return batches
+}
 
-		slurmAlloc := GetSlurmInfo()
-		if slurmAlloc != nil {
-			log.Printf("Active slurm allocation. UseSlurmMode=%v", flagUseSlurm)
-			log.Printf("%15s|%8s|", "HostName", "NTasks")
-			log.Printf("%15s|%8s|", "-----", "-----")
-			for _, node := range slurmAlloc.Nodes {
-				log.Printf("%15s|%8d|", node.HostName, node.NTasks)
-			}
-		}
+func runBatches(batches []BatchDefinition) {
 
-		runCtx, runCtxCancel := context.WithCancel(context.Background())
-		defer runCtxCancel()
-
-		if !flagUseSlurm || slurmAlloc == nil {
-
-			wp := NewPool(flagNProcess)
-			for _, batch := range batches {
-				wp.SubmitTask(BatchExecution(runCtx, batch, nil))
-			}
-
-			wp.Start(time.Millisecond * time.Duration(flagWorkerStartDelay))
-			wp.Wait()
-
-		} else {
-
-			if flagNProcess != 1 {
-				log.Println("WARN: -np flag is disregarded in slurm mode.")
-			}
-
-			jobChan := make(chan BatchDefinition)
-			serverWaitGroup := sync.WaitGroup{}
-
-			nTasksTotal := 0
-			// start goroutines to serve individual task slots
-			for _, node := range slurmAlloc.Nodes {
-				nTasksTotal += node.NTasks
-				for i := 0; i < node.NTasks; i++ {
-					nodeBatchProxyPrefix := []string{"srun", "-n", "1", "-w", node.HostName}
-					serverWaitGroup.Add(1)
-					go func() {
-						defer serverWaitGroup.Done()
-						for batch := range jobChan {
-							BatchExecution(runCtx, batch, nodeBatchProxyPrefix)()
-						}
-					}()
-				}
-			}
-
-			startupCounter := nTasksTotal
-			// distribute jobs
-			for _, batch := range batches {
-				jobChan <- batch
-				if startupCounter > 0 {
-					time.Sleep(time.Millisecond * time.Duration(flagWorkerStartDelay))
-					startupCounter--
-				}
-			}
-			close(jobChan)
-
-			serverWaitGroup.Wait()
+	slurmAlloc := GetSlurmInfo()
+	if slurmAlloc != nil {
+		log.Printf("Active slurm allocation. UseSlurmMode=%v", flagUseSlurm)
+		log.Printf("%15s|%8s|", "HostName", "NTasks")
+		log.Printf("%15s|%8s|", "-----", "-----")
+		for _, node := range slurmAlloc.Nodes {
+			log.Printf("%15s|%8d|", node.HostName, node.NTasks)
 		}
 	}
+
+	runCtx, runCtxCancel := context.WithCancel(context.Background())
+	defer runCtxCancel()
+
+	if !flagUseSlurm || slurmAlloc == nil {
+
+		wp := NewPool(flagNProcess)
+		for _, batch := range batches {
+			wp.SubmitTask(BatchExecution(runCtx, batch, nil))
+		}
+
+		wp.Start(time.Millisecond * time.Duration(flagWorkerStartDelay))
+		wp.Wait()
+
+	} else {
+
+		if flagNProcess != 1 {
+			log.Println("WARN: -np flag is disregarded in slurm mode.")
+		}
+
+		jobChan := make(chan BatchDefinition)
+		serverWaitGroup := sync.WaitGroup{}
+
+		nTasksTotal := 0
+		// start goroutines to serve individual task slots
+		for _, node := range slurmAlloc.Nodes {
+			nTasksTotal += node.NTasks
+			for i := 0; i < node.NTasks; i++ {
+				nodeBatchProxyPrefix := []string{"srun", "-n", "1", "-w", node.HostName}
+				serverWaitGroup.Add(1)
+				go func() {
+					defer serverWaitGroup.Done()
+					for batch := range jobChan {
+						BatchExecution(runCtx, batch, nodeBatchProxyPrefix)()
+					}
+				}()
+			}
+		}
+
+		startupCounter := nTasksTotal
+		// distribute jobs
+		for _, batch := range batches {
+			jobChan <- batch
+			if startupCounter > 0 {
+				time.Sleep(time.Millisecond * time.Duration(flagWorkerStartDelay))
+				startupCounter--
+			}
+		}
+		close(jobChan)
+
+		serverWaitGroup.Wait()
+	}
+
 }

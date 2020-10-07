@@ -14,6 +14,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 )
 
 type BatchDefinition struct {
@@ -29,6 +30,8 @@ type MolRange struct {
 	StartLine int64
 	EndLine   int64
 }
+
+var HadErrorFlag int32 = 0
 
 func BatchExecution(ctx context.Context, batch BatchDefinition, proxy []string) func() {
 	return func() {
@@ -50,6 +53,7 @@ func BatchExecution(ctx context.Context, batch BatchDefinition, proxy []string) 
 
 		if err := cmd.Run(); err != nil {
 			log.Printf("an error while running in workspace %s: (%s) %v", batch.WorkSpaceDir, strings.Join(cmd.Args, " "), err)
+			atomic.AddInt32(&HadErrorFlag, 1)
 		}
 	}
 
@@ -96,7 +100,7 @@ func GenerateJobWorkspaceFromFileList(list []string, workspaceDef *CompiledWorks
 		for path, tpl := range workspaceDef.TemplateFiles {
 			realPath := filepath.Join(currentBatchDefinition.WorkSpaceDir, "./", path)
 			os.MkdirAll(filepath.Dir(realPath), 0755)
-			f, err := os.OpenFile(realPath[:len(realPath)-len(".tpl")], os.O_CREATE|os.O_WRONLY, workspaceDef.PermLookupTable[path])
+			f, err := os.OpenFile(realPath[:len(realPath)-len(".tpl")], os.O_CREATE|os.O_WRONLY|os.O_TRUNC, workspaceDef.PermLookupTable[path])
 			panicIfErr(err)
 
 			if err := tpl.Execute(f, currentBatchDefinition); err != nil {
@@ -107,7 +111,7 @@ func GenerateJobWorkspaceFromFileList(list []string, workspaceDef *CompiledWorks
 		for path, fp := range workspaceDef.RegularFiles {
 			realPath := filepath.Join(currentBatchDefinition.WorkSpaceDir, "./", path)
 			os.MkdirAll(filepath.Dir(realPath), 0755)
-			f, err := os.OpenFile(realPath, os.O_CREATE|os.O_WRONLY, workspaceDef.PermLookupTable[path])
+			f, err := os.OpenFile(realPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, workspaceDef.PermLookupTable[path])
 			panicIfErr(err)
 
 			fOrig, err := os.Open(fp)
